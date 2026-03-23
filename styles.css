@@ -233,13 +233,15 @@ h1 {
   overflow: hidden;
   min-height: 0;
   aspect-ratio: 5 / 4;
+  background-image: url("imagenes/fondo.jpg");
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
   box-shadow: var(--shadow-md);
 }
 
 .hero-image img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
+  display: none;
 }
 
 main section {
@@ -281,8 +283,15 @@ main section {
 .card img {
   height: 200px;
   width: 100%;
+  display: block;
   object-fit: cover;
+  border-radius: 12px 12px 0 0;
   flex-shrink: 0;
+  transition: transform 0.35s ease;
+}
+
+.card:hover img {
+  transform: scale(1.04);
 }
 
 .card-body {
@@ -379,15 +388,89 @@ main section {
 }
 
 .site-footer {
-  margin-top: 1.2rem;
-  background: rgba(19, 5, 11, 0.87);
+  margin-top: 1.5rem;
+  background: linear-gradient(180deg, rgba(24, 8, 15, 0.96), rgba(13, 4, 9, 0.98));
   color: rgba(255, 255, 255, 0.92);
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
 }
 
 .footer-wrap {
   display: grid;
-  gap: 1rem;
-  padding: 1.4rem 0 1.6rem;
+  gap: 1.2rem;
+  padding: 2rem 0 1.25rem;
+}
+
+.footer-col {
+  min-width: 0;
+}
+
+.footer-col h4 {
+  margin: 0 0 0.7rem;
+  font-size: 0.98rem;
+  color: rgba(255, 255, 255, 0.96);
+}
+
+.footer-brand strong {
+  display: block;
+  font-size: 1.1rem;
+}
+
+.footer-text {
+  margin: 0.55rem 0 0.9rem;
+  color: rgba(255, 255, 255, 0.78);
+  max-width: 30ch;
+}
+
+.footer-links {
+  display: grid;
+  align-content: start;
+  gap: 0.45rem;
+}
+
+.footer-links a {
+  color: rgba(255, 255, 255, 0.84);
+  text-decoration: none;
+  transition: color 0.2s ease, transform 0.2s ease;
+}
+
+.footer-links a:hover {
+  color: #ffffff;
+  transform: translateX(3px);
+}
+
+.footer-contact p {
+  margin: 0 0 0.45rem;
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.footer-cta {
+  margin-top: 0.65rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.62rem 0.9rem;
+  border-radius: 999px;
+  color: #fff;
+  background: linear-gradient(145deg, #25d366, #16a34a);
+  text-decoration: none;
+  font-weight: 700;
+  box-shadow: 0 10px 22px rgba(7, 94, 42, 0.32);
+  transition: transform 0.2s ease, box-shadow 0.2s ease, filter 0.2s ease;
+}
+
+.footer-cta:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 14px 26px rgba(7, 94, 42, 0.4);
+  filter: brightness(1.02);
+}
+
+.footer-bottom {
+  padding: 0.9rem 0 1.2rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.14);
+}
+
+.footer-bottom small {
+  color: rgba(255, 255, 255, 0.7);
 }
 
 .socials {
@@ -396,34 +479,72 @@ main section {
 }
 
 .socials a {
-  width: 36px;
-  height: 36px;
-  border-radius: 10px;
-  display: grid;
-  place-items: center;
-  background: rgba(255, 255, 255, 0.09);
-  transition: transform 0.2s ease, background 0.2s ease;
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--white);
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.22);
+  transition: transform 0.2s ease, box-shadow 0.2s ease, filter 0.2s ease;
 }
 
 .socials a:hover {
-  transform: translateY(-2px);
-  background: rgba(255, 255, 255, 0.16);
+  transform: translateY(-2px) scale(1.05);
+  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.28);
+  filter: brightness(1.05);
+}
+
+.socials a:focus-visible {
+  outline: 2px solid rgba(255, 255, 255, 0.95);
+  outline-offset: 2px;
+}
+
+.social-link svg {
+  width: 20px;
+  height: 20px;
+  fill: currentColor;
+  display: block;
+}
+
+.social-link.instagram {
+  background: linear-gradient(140deg, #f58529, #dd2a7b 55%, #8134af);
+}
+
+.social-link.facebook {
+  background: #1877f2;
 }
 
 .whatsapp-float {
   position: fixed;
-  right: 1rem;
-  bottom: 1rem;
-  width: 56px;
-  height: 56px;
+  right: 20px;
+  bottom: 20px;
+  width: 60px;
+  height: 60px;
   border-radius: 50%;
-  display: grid;
-  place-items: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   color: var(--white);
-  background: linear-gradient(145deg, #25d366, #16a34a);
-  box-shadow: 0 10px 22px rgba(7, 94, 42, 0.38);
+  background: #25d366;
+  box-shadow: 0 10px 24px rgba(7, 94, 42, 0.34);
+  transition: transform 0.2s ease, box-shadow 0.2s ease, filter 0.2s ease;
   z-index: 45;
   animation: pulse 2.3s infinite;
+}
+
+.whatsapp-float svg {
+  width: 30px;
+  height: 30px;
+  display: block;
+  fill: currentColor;
+}
+
+.whatsapp-float:hover {
+  transform: scale(1.06);
+  box-shadow: 0 14px 30px rgba(7, 94, 42, 0.4);
+  filter: brightness(1.03);
 }
 
 .assistant-toggle {
@@ -505,6 +626,16 @@ main section {
   color: var(--text);
 }
 
+.assistant-msg.bot a {
+  color: var(--rose-900);
+  font-weight: 700;
+  text-decoration-thickness: 2px;
+}
+
+.assistant-msg.bot a:hover {
+  opacity: 0.88;
+}
+
 .assistant-msg.user {
   margin-left: auto;
   color: var(--white);
@@ -526,6 +657,7 @@ main section {
   border-radius: 999px;
   padding: 0.42rem 0.66rem;
   font-size: 0.77rem;
+  font-weight: 600;
   cursor: pointer;
   transition: background 0.2s ease, transform 0.2s ease;
 }
@@ -652,8 +784,8 @@ main section {
   }
 
   .footer-wrap {
-    grid-template-columns: 1fr auto;
-    align-items: center;
+    grid-template-columns: 1.2fr 0.8fr 1fr;
+    align-items: start;
   }
 }
 
