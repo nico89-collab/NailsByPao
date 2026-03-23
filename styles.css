@@ -273,6 +273,12 @@ main section {
   transition: transform 0.25s ease, box-shadow 0.25s ease;
 }
 
+.card-link {
+  text-decoration: none;
+  color: inherit;
+  cursor: pointer;
+}
+
 .card:hover {
   transform: translateY(-5px);
   box-shadow: var(--shadow-md);
