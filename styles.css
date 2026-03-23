@@ -375,6 +375,15 @@ main section {
   box-shadow: var(--shadow-sm);
 }
 
+.info-box h2,
+.media-box h3 {
+  margin: 0 0 0.55rem;
+}
+
+.media-box h3 {
+  color: var(--rose-900);
+}
+
 .media-grid {
   display: grid;
   gap: 0.8rem;
