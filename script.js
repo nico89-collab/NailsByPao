@@ -620,3 +620,111 @@ function createVirtualAssistant() {
   });
 }
 
+function initBookingFallback() {
+  const form = document.getElementById("bookingForm");
+  const dateInput = document.getElementById("bookingDate");
+  const timeSelect = document.getElementById("bookingTime");
+  const feedback = document.getElementById("bookingFeedback");
+  const nameInput = document.getElementById("clientName");
+  const serviceSelect = document.getElementById("serviceSelect");
+
+  if (!form || !dateInput || !timeSelect) {
+    return;
+  }
+
+  const setTodayMin = () => {
+    const today = new Date();
+    const yyyy = today.getFullYear();
+    const mm = String(today.getMonth() + 1).padStart(2, "0");
+    const dd = String(today.getDate()).padStart(2, "0");
+    dateInput.min = `${yyyy}-${mm}-${dd}`;
+  };
+
+  const slots = [];
+  for (let hour = 9; hour < 19; hour += 1) {
+    slots.push(`${String(hour).padStart(2, "0")}:00`);
+    slots.push(`${String(hour).padStart(2, "0")}:30`);
+  }
+
+  const renderNoDate = () => {
+    timeSelect.innerHTML = "";
+    const option = document.createElement("option");
+    option.value = "";
+    option.textContent = "Primero elegí una fecha";
+    timeSelect.appendChild(option);
+  };
+
+  const renderSlots = (dateValue) => {
+    timeSelect.innerHTML = "";
+
+    if (!dateValue) {
+      renderNoDate();
+      return;
+    }
+
+    const startOption = document.createElement("option");
+    startOption.value = "";
+    startOption.textContent = "Seleccioná un horario";
+    timeSelect.appendChild(startOption);
+
+    slots.forEach((slot) => {
+      const option = document.createElement("option");
+      option.value = slot;
+      option.textContent = slot;
+      timeSelect.appendChild(option);
+    });
+  };
+
+  setTodayMin();
+
+  const onDateChange = () => {
+    const selectedDate = (dateInput.value || "").trim();
+    renderSlots(selectedDate);
+  };
+
+  dateInput.addEventListener("change", onDateChange);
+  dateInput.addEventListener("input", onDateChange);
+  dateInput.addEventListener("blur", onDateChange);
+
+  if (dateInput.value) {
+    renderSlots(dateInput.value.trim());
+  } else {
+    renderNoDate();
+  }
+
+  form.addEventListener("submit", (event) => {
+    event.preventDefault();
+
+    const name = (nameInput?.value || "").trim();
+    const service = serviceSelect?.value || "";
+    const date = (dateInput.value || "").trim();
+    const time = (timeSelect.value || "").trim();
+
+    if (!name || !service || !date || !time) {
+      if (feedback) {
+        feedback.textContent = "Completá todos los campos para confirmar tu turno.";
+        feedback.classList.remove("is-success");
+        feedback.classList.add("is-error");
+      }
+      return;
+    }
+
+    if (feedback) {
+      feedback.textContent = "Turno confirmado (modo local).";
+      feedback.classList.remove("is-error");
+      feedback.classList.add("is-success");
+    }
+
+    window.alert("Turno confirmado. Te esperamos en Nails By Pao.");
+    form.reset();
+    renderNoDate();
+  });
+}
+
+window.setTimeout(() => {
+  if (window.nailsAppointmentsRuntimeReady) {
+    return;
+  }
+  initBookingFallback();
+}, 350);
+

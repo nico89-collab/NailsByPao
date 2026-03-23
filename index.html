@@ -28,7 +28,7 @@
     <header class="site-header">
       <div class="container navbar">
         <a class="logo" href="index.html" aria-label="Ir al inicio">
-          <span class="logo-mark">NP</span>
+          <img class="logo-mark" src="imagenes/perfil.jpg?v=2" alt="Logo Nails By Pao" width="40" height="40" decoding="async" />
           <span>Nails By Pao</span>
         </a>
         <button class="menu-toggle" aria-label="Abrir menú" aria-expanded="false">☰</button>
@@ -125,6 +125,60 @@
           </article>
         </div>
       </section>
+
+      <section id="reservas" class="container booking-section reveal">
+        <div class="section-head">
+          <h2>Reservá Tu Turno</h2>
+          <p>Completá el formulario y elegí solo horarios disponibles en tiempo real.</p>
+        </div>
+
+        <div class="booking-layout">
+          <article class="booking-card">
+            <h3>Datos de la Reserva</h3>
+            <form id="bookingForm" class="booking-form" novalidate>
+              <label for="clientName">Nombre</label>
+              <input id="clientName" name="clientName" type="text" maxlength="60" placeholder="Tu nombre" required />
+
+              <label for="serviceSelect">Servicio</label>
+              <select id="serviceSelect" name="service" required>
+                <option value="">Seleccioná un servicio</option>
+                <option value="Soft Gel">Soft Gel</option>
+                <option value="Kapping">Kapping</option>
+                <option value="Semipermanente">Semipermanente</option>
+              </select>
+
+              <label for="bookingDate">Fecha</label>
+              <input id="bookingDate" name="date" type="date" required />
+
+              <label for="bookingTime">Hora</label>
+              <select id="bookingTime" name="time" required>
+                <option value="">Primero elegí una fecha</option>
+              </select>
+
+              <button class="btn btn-primary" type="submit">Confirmar turno</button>
+              <p id="bookingFeedback" class="booking-feedback" role="status" aria-live="polite"></p>
+            </form>
+          </article>
+
+          <article class="booking-card booking-help">
+            <h3>¿Cómo funciona?</h3>
+            <ul>
+              <li>Elegís servicio, fecha y hora.</li>
+              <li>Solo ves horarios libres, sin superposición.</li>
+              <li>Recibís confirmación en pantalla al instante.</li>
+            </ul>
+            <p class="booking-note">Si necesitás ayuda inmediata, escribinos por WhatsApp.</p>
+            <a
+              class="btn btn-secondary"
+              href="https://wa.me/2657603395?text=Hola%20quiero%20ayuda%20para%20reservar%20mi%20turno"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              Consultar por WhatsApp
+            </a>
+          </article>
+        </div>
+      </section>
     </main>
 
     <footer class="site-footer">
@@ -178,5 +232,6 @@
     </a>
 
     <script src="script.js"></script>
+    <script type="module" src="app.js"></script>
   </body>
 </html>

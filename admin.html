@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Admin Turnos | Nails By Pao</title>
+    <meta name="description" content="Panel de administracion de turnos de Nails By Pao." />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="styles.css" />
+    <script src="login.js?v=20260323" defer></script>
+  </head>
+  <body data-page="admin">
+    <header class="site-header">
+      <div class="container navbar">
+        <a class="logo" href="index.html" aria-label="Ir al inicio">
+          <img class="logo-mark" src="imagenes/perfil.jpg?v=2" alt="Logo Nails By Pao" width="40" height="40" decoding="async" />
+          <span>Nails By Pao</span>
+        </a>
+        <nav class="nav-links nav-links-admin" aria-label="Navegacion de administracion">
+          <a href="index.html">Volver al sitio</a>
+          <a href="admin.html" class="active">Panel</a>
+          <button id="adminLogoutBtn" class="nav-logout" type="button">Cerrar sesión</button>
+        </nav>
+      </div>
+    </header>
+
+    <main id="adminMain" class="container admin-page reveal visible" hidden>
+      <section class="admin-top">
+        <h1>Panel de Administración</h1>
+        <p>Gestioná reservas, bloqueá horarios y actualizá el estado de cada turno.</p>
+      </section>
+
+      <section id="firebaseWarning" class="admin-card admin-warning" hidden>
+        <h2>Configuración pendiente</h2>
+        <p>
+          Configurá tus claves de Firebase en <strong>app.js</strong> para activar el sistema de
+          turnos.
+        </p>
+      </section>
+
+      <section id="adminLogin" class="admin-card" hidden>
+        <h2>Ingreso admin</h2>
+        <form id="adminLoginForm" class="admin-login-form">
+          <label for="adminUsername">Usuario</label>
+          <input id="adminUsername" type="text" placeholder="admin" required />
+          <label for="adminPassword">Contraseña</label>
+          <input id="adminPassword" type="password" placeholder="admin" required />
+          <button class="btn btn-primary" type="submit">Ingresar</button>
+          <p id="adminLoginFeedback" class="booking-feedback" role="status" aria-live="polite"></p>
+        </form>
+        <p class="booking-note">Credenciales iniciales: usuario <strong>admin</strong> y contraseña <strong>admin</strong>.</p>
+      </section>
+
+      <section id="adminDashboard" class="admin-grid" hidden>
+        <article class="admin-card admin-calendar-card">
+          <div class="admin-calendar-head">
+            <h2>Calendario de Turnos</h2>
+            <div class="admin-calendar-controls">
+              <button id="calendarPrev" class="btn btn-secondary" type="button" aria-label="Mes anterior">◀</button>
+              <p id="calendarTitle" class="admin-calendar-title">Mes actual</p>
+              <button id="calendarNext" class="btn btn-secondary" type="button" aria-label="Mes siguiente">▶</button>
+            </div>
+          </div>
+          <div class="admin-calendar-legend" aria-label="Leyenda del calendario">
+            <span><i class="dot dot-turno"></i> Con turnos (slots libres)</span>
+            <span><i class="dot dot-bloqueado"></i> Con bloqueos</span>
+            <span><i class="dot dot-completo"></i> Día completo</span>
+            <span><i class="dot dot-libre"></i> Sin actividad</span>
+          </div>
+          <div id="adminCalendar" class="admin-calendar" role="grid" aria-label="Calendario mensual de turnos"></div>
+        </article>
+
+        <article class="admin-card">
+          <h2>Filtros y acciones</h2>
+          <div class="admin-toolbar">
+            <label for="adminFilterDate">Filtrar por fecha</label>
+            <input id="adminFilterDate" type="date" />
+            <div class="admin-toolbar-actions">
+              <button id="refreshAppointments" class="btn btn-secondary" type="button">Actualizar</button>
+              <button id="clearFilter" class="btn btn-secondary" type="button">Quitar filtro</button>
+            </div>
+          </div>
+          <div id="adminStats" class="admin-stats"></div>
+        </article>
+
+        <article class="admin-card">
+          <h2>Bloquear horario manual</h2>
+          <form id="blockSlotForm" class="admin-block-form">
+            <label for="blockDate">Fecha</label>
+            <input id="blockDate" type="date" required />
+            <label for="blockTime">Hora</label>
+            <select id="blockTime" required>
+              <option value="">Seleccioná hora</option>
+            </select>
+            <button class="btn btn-primary" type="submit">Bloquear horario</button>
+            <p id="blockFeedback" class="booking-feedback" role="status" aria-live="polite"></p>
+          </form>
+        </article>
+      </section>
+
+      <section id="appointmentsSection" class="admin-card" hidden>
+        <h2>Lista de turnos</h2>
+        <div class="appointments-table-wrap">
+          <table class="appointments-table">
+            <thead>
+              <tr>
+                <th>Nombre</th>
+                <th>Servicio</th>
+                <th>Fecha</th>
+                <th>Hora</th>
+                <th>Estado</th>
+                <th>Acciones</th>
+              </tr>
+            </thead>
+            <tbody id="appointmentsBody"></tbody>
+          </table>
+        </div>
+      </section>
+    </main>
+
+    <script src="script.js"></script>
+    <script type="module" src="app.js"></script>
+  </body>
+</html>
