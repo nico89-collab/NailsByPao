@@ -99,33 +99,6 @@
         </div>
       </section>
 
-      <section class="container reveal">
-        <div class="section-head">
-          <h2>Testimonios</h2>
-          <p>Clientes felices que vuelven cada mes.</p>
-        </div>
-        <div class="testimonials">
-          <article class="quote">
-            <p>
-              "Amo cómo trabajan, cada detalle está cuidado. Mis uñas duran perfectas semanas."
-            </p>
-            <strong>Camila R.</strong>
-          </article>
-          <article class="quote">
-            <p>
-              "El estudio es hermoso, súper limpio y la atención de Pao es excelente."
-            </p>
-            <strong>Valentina M.</strong>
-          </article>
-          <article class="quote">
-            <p>
-              "Reservar fue rapidisimo y el resultado final supero mis expectativas."
-            </p>
-            <strong>Lucía S.</strong>
-          </article>
-        </div>
-      </section>
-
       <section id="reservas" class="container booking-section reveal">
         <div class="section-head">
           <h2>Reservá Tu Turno</h2>
@@ -221,7 +194,7 @@
             <a href="#">Política de privacidad</a>
           </nav>
         </div>
-        <small class="footer-dev">Desarrollado por <a href="https://wa.me/549265764526" target="_blank" rel="noopener noreferrer">Nicolás Almada</a></small>
+        <small class="footer-dev">Desarrollado por <a href="https://wa.me/542657644526?text=Hola,%20quiero%20consultar%20por%20una%20pagina%20web" target="_blank" rel="noopener noreferrer">Nicolás Almada</a></small>
       </div>
     </footer>
 
@@ -238,6 +211,37 @@
         <path d="M16.03 3.2c-7.08 0-12.83 5.76-12.83 12.84 0 2.25.58 4.43 1.69 6.36L3.1 28.8l6.56-1.72a12.77 12.77 0 0 0 6.37 1.73h.01c7.08 0 12.84-5.76 12.84-12.84S23.12 3.2 16.04 3.2h-.01zm0 23.35h-.01a10.6 10.6 0 0 1-5.39-1.47l-.39-.23-3.89 1.02 1.04-3.8-.25-.39a10.58 10.58 0 0 1-1.64-5.63c0-5.85 4.76-10.61 10.62-10.61s10.61 4.76 10.61 10.61-4.76 10.6-10.6 10.6z" />
       </svg>
     </a>
+
+    <div id="bookingConfirmModal" class="booking-modal" hidden aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="bookingModalTitle">
+      <div class="booking-modal__dialog">
+        <h3 id="bookingModalTitle">Turno confirmado 🎉</h3>
+        <p class="booking-modal__subtitle">Tu turno fue reservado correctamente. Te esperamos.</p>
+
+        <dl class="booking-modal__details" aria-label="Datos del turno reservado">
+          <div>
+            <dt>Nombre</dt>
+            <dd id="bookingModalName">-</dd>
+          </div>
+          <div>
+            <dt>Servicio</dt>
+            <dd id="bookingModalService">-</dd>
+          </div>
+          <div>
+            <dt>Fecha</dt>
+            <dd id="bookingModalDate">-</dd>
+          </div>
+          <div>
+            <dt>Hora</dt>
+            <dd id="bookingModalTime">-</dd>
+          </div>
+        </dl>
+
+        <div class="booking-modal__actions">
+          <a id="bookingModalWhatsapp" class="btn btn-secondary" href="#" target="_blank" rel="noopener noreferrer">Enviar por WhatsApp</a>
+          <button id="bookingModalCloseBtn" class="btn btn-primary" type="button">Cerrar</button>
+        </div>
+      </div>
+    </div>
 
     <script src="script.js"></script>
     <script type="module" src="app.js"></script>

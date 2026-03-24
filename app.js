@@ -1,11 +1,10 @@
-import { getApp, getApps, initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
+import { getApps, initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
 import {
   collection,
   deleteDoc,
   doc,
   getDoc,
   getDocs,
-  getFirestore,
   query,
   runTransaction,
   serverTimestamp,
@@ -18,20 +17,20 @@ import {
   getAuth,
   onAuthStateChanged,
   sendPasswordResetEmail,
-  signInWithEmailAndPassword,
   signOut,
   updatePassword,
 } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
+import {
+  firebaseAuth,
+  firebaseConfig,
+  firebaseDb,
+  hasValidFirebaseConfig,
+} from "./firebase-config.js";
 
 if (window.location.protocol === "file:") {
   alert("Esta aplicación requiere ejecutarse en un servidor local (ej: Live Server o http://localhost).");
 }
 
-const ENABLE_ADMIN_AUTH = true;
-const LOCAL_ADMIN_CREDENTIALS_KEY = "nailsAdminCredentials";
-const LOCAL_ADMIN_SESSION_KEY = "nailsAdminSession";
-const LOCAL_APPOINTMENTS_KEY = "nailsLocalAppointments";
-const DEFAULT_LOCAL_ADMIN = { username: "", password: "" };
 const WORKDAY_START_HOUR = 9;
 const WORKDAY_END_HOUR = 19;
 const SLOT_MINUTES = 30;
@@ -40,23 +39,9 @@ const TIME_SLOTS = buildTimeSlots(WORKDAY_START_HOUR, WORKDAY_END_HOUR, SLOT_MIN
 let adminDashboardReady = false;
 const PRIMARY_ADMIN_EMAIL = "admin@tudominio.com";
 const SECONDARY_ADMIN_APP_NAME = "nails-admin-user-manager";
-const DEV_ADMIN_SESSION_KEY = "nailsDevAdminSession";
-
-// Reemplaza con tu config real de Firebase.
-const firebaseConfig = {
-  apiKey: "REEMPLAZAR_API_KEY",
-  authDomain: "REEMPLAZAR_AUTH_DOMAIN",
-  projectId: "REEMPLAZAR_PROJECT_ID",
-  storageBucket: "REEMPLAZAR_STORAGE_BUCKET",
-  messagingSenderId: "REEMPLAZAR_MESSAGING_SENDER_ID",
-  appId: "REEMPLAZAR_APP_ID",
-};
 
 const page = document.body.dataset.page || "client";
 window.nailsAppointmentsRuntimeReady = true;
-const hasValidFirebaseConfig = !Object.values(firebaseConfig).some((value) =>
-  String(value).includes("REEMPLAZAR_")
-);
 
 if (!hasValidFirebaseConfig) {
   showFirebaseWarning();
@@ -66,14 +51,10 @@ if (!hasValidFirebaseConfig) {
     initClient(null);
   }
 } else {
-  const app = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig);
-  const db = getFirestore(app);
-  const auth = getAuth(app);
-
   if (page === "admin") {
-    initAdmin(db, auth);
+    initAdmin(firebaseDb, firebaseAuth);
   } else {
-    initClient(db);
+    initClient(firebaseDb);
   }
 }
 
@@ -97,64 +78,7 @@ function showFirebaseWarning() {
 
   const bookingFeedback = document.getElementById("bookingFeedback");
   if (bookingFeedback) {
-    setFeedback(bookingFeedback, "Configuración pendiente de Firebase en app.js.", "error");
-  }
-}
-
-function getLocalAdminCredentials() {
-  try {
-    const raw = localStorage.getItem(LOCAL_ADMIN_CREDENTIALS_KEY);
-    if (!raw) {
-      localStorage.setItem(LOCAL_ADMIN_CREDENTIALS_KEY, JSON.stringify(DEFAULT_LOCAL_ADMIN));
-      return DEFAULT_LOCAL_ADMIN;
-    }
-
-    const parsed = JSON.parse(raw);
-    if (!parsed.username || !parsed.password) {
-      localStorage.setItem(LOCAL_ADMIN_CREDENTIALS_KEY, JSON.stringify(DEFAULT_LOCAL_ADMIN));
-      return DEFAULT_LOCAL_ADMIN;
-    }
-
-    return { username: parsed.username, password: parsed.password };
-  } catch {
-    localStorage.setItem(LOCAL_ADMIN_CREDENTIALS_KEY, JSON.stringify(DEFAULT_LOCAL_ADMIN));
-    return DEFAULT_LOCAL_ADMIN;
-  }
-}
-
-function saveLocalAdminCredentials(credentials) {
-  localStorage.setItem(LOCAL_ADMIN_CREDENTIALS_KEY, JSON.stringify(credentials));
-}
-
-function isLocalAdminLoggedIn() {
-  return sessionStorage.getItem(LOCAL_ADMIN_SESSION_KEY) === "1";
-}
-
-function setLocalAdminLoggedIn(isLogged) {
-  if (isLogged) {
-    sessionStorage.setItem(LOCAL_ADMIN_SESSION_KEY, "1");
-  } else {
-    sessionStorage.removeItem(LOCAL_ADMIN_SESSION_KEY);
-  }
-}
-
-function toggleAdminVisibility(isLogged) {
-  const dashboard = document.getElementById("adminDashboard");
-  const section = document.getElementById("appointmentsSection");
-  const loginCard = document.getElementById("adminLogin");
-  const changeCard = document.getElementById("adminPasswordCard");
-
-  if (dashboard) {
-    dashboard.hidden = !isLogged;
-  }
-  if (section) {
-    section.hidden = !isLogged;
-  }
-  if (loginCard) {
-    loginCard.hidden = isLogged;
-  }
-  if (changeCard) {
-    changeCard.hidden = !isLogged;
+    setFeedback(bookingFeedback, "Configuración pendiente de Firebase en firebase-config.js.", "error");
   }
 }
 
@@ -179,50 +103,86 @@ function clearFeedback(element) {
   element.classList.remove("is-error", "is-success");
 }
 
-function showBookingConfirmedDialog() {
-  window.alert("Turno confirmado. Te esperamos en Nails By Pao.");
+function getBookingModalElements() {
+  return {
+    modal: document.getElementById("bookingConfirmModal"),
+    closeBtn: document.getElementById("bookingModalCloseBtn"),
+    whatsappBtn: document.getElementById("bookingModalWhatsapp"),
+    name: document.getElementById("bookingModalName"),
+    service: document.getElementById("bookingModalService"),
+    date: document.getElementById("bookingModalDate"),
+    time: document.getElementById("bookingModalTime"),
+  };
 }
 
-function getLocalAppointments() {
-  try {
-    const raw = localStorage.getItem(LOCAL_APPOINTMENTS_KEY);
-    if (!raw) {
-      return [];
-    }
-    const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed : [];
-  } catch {
-    return [];
+function formatBookingDateForModal(dateValue) {
+  if (!dateValue) {
+    return "-";
   }
-}
 
-function setLocalAppointments(items) {
-  try {
-    localStorage.setItem(LOCAL_APPOINTMENTS_KEY, JSON.stringify(items));
-  } catch {
-    // noop
+  const parsed = new Date(`${dateValue}T00:00:00`);
+  if (Number.isNaN(parsed.getTime())) {
+    return dateValue;
   }
-}
 
-function upsertLocalAppointment(appointment) {
-  const list = getLocalAppointments();
-  const index = list.findIndex((item) => item.id === appointment.id);
-  if (index === -1) {
-    list.push(appointment);
-  } else {
-    list[index] = { ...list[index], ...appointment };
-  }
-  setLocalAppointments(list);
-}
-
-function getLocalOccupiedTimesByDate(date) {
-  const occupied = new Set();
-  getLocalAppointments().forEach((item) => {
-    if (item.date === date && OCCUPIED_STATUSES.includes(item.status)) {
-      occupied.add(item.time);
-    }
+  return parsed.toLocaleDateString("es-AR", {
+    weekday: "long",
+    day: "2-digit",
+    month: "long",
+    year: "numeric",
   });
-  return occupied;
+}
+
+function cerrarModalTurno() {
+  const { modal } = getBookingModalElements();
+  if (!modal) {
+    return;
+  }
+
+  modal.classList.remove("is-open");
+  modal.setAttribute("aria-hidden", "true");
+  window.setTimeout(() => {
+    modal.hidden = true;
+  }, 280);
+  document.body.classList.remove("booking-modal-open");
+}
+
+function abrirModalTurno(data) {
+  const { modal, closeBtn, whatsappBtn, name, service, date, time } = getBookingModalElements();
+  if (!modal || !closeBtn || !whatsappBtn || !name || !service || !date || !time) {
+    console.error("Modal de confirmación no disponible en el DOM.");
+    return;
+  }
+
+  name.textContent = data?.nombre || "-";
+  service.textContent = data?.servicio || "-";
+  date.textContent = formatBookingDateForModal(data?.fecha || "");
+  time.textContent = data?.hora || "-";
+
+  const whatsappText = `Hola, reservé un turno. Nombre: ${data?.nombre || "-"}. Servicio: ${data?.servicio || "-"}. Fecha: ${data?.fecha || "-"}. Hora: ${data?.hora || "-"}.`;
+  whatsappBtn.href = `https://wa.me/2657603395?text=${encodeURIComponent(whatsappText)}`;
+
+  if (modal.dataset.eventsBound !== "1") {
+    closeBtn.addEventListener("click", cerrarModalTurno);
+    modal.addEventListener("click", (event) => {
+      if (event.target === modal) {
+        cerrarModalTurno();
+      }
+    });
+    window.addEventListener("keydown", (event) => {
+      if (event.key === "Escape" && modal.classList.contains("is-open")) {
+        cerrarModalTurno();
+      }
+    });
+    modal.dataset.eventsBound = "1";
+  }
+
+  modal.hidden = false;
+  modal.setAttribute("aria-hidden", "false");
+  document.body.classList.add("booking-modal-open");
+  window.requestAnimationFrame(() => {
+    modal.classList.add("is-open");
+  });
 }
 
 function setMinToday(input) {
@@ -239,10 +199,6 @@ function setMinToday(input) {
 async function getOccupiedTimesByDate(db, date) {
   if (!date) {
     return new Set();
-  }
-
-  if (!db) {
-    return getLocalOccupiedTimesByDate(date);
   }
 
   const ref = collection(db, "appointments");
@@ -263,6 +219,7 @@ async function getOccupiedTimesByDate(db, date) {
 async function initClient(db) {
   const form = document.getElementById("bookingForm");
   if (!form) {
+    console.error("Elemento no encontrado: #bookingForm");
     return;
   }
 
@@ -273,6 +230,21 @@ async function initClient(db) {
   const feedback = document.getElementById("bookingFeedback");
 
   if (!dateInput || !timeSelect || !feedback || !nameInput || !serviceSelect) {
+    if (!nameInput) {
+      console.error("Elemento no encontrado: #clientName");
+    }
+    if (!serviceSelect) {
+      console.error("Elemento no encontrado: #serviceSelect");
+    }
+    if (!dateInput) {
+      console.error("Elemento no encontrado: #bookingDate");
+    }
+    if (!timeSelect) {
+      console.error("Elemento no encontrado: #bookingTime");
+    }
+    if (!feedback) {
+      console.error("Elemento no encontrado: #bookingFeedback");
+    }
     return;
   }
 
@@ -281,12 +253,15 @@ async function initClient(db) {
   const updateTimesBySelectedDate = async () => {
     clearFeedback(feedback);
     const selectedDate = dateInput.value.trim();
+    console.log("Fecha seleccionada:", selectedDate);
     await renderTimeOptions(db, selectedDate, timeSelect);
   };
 
   dateInput.addEventListener("change", updateTimesBySelectedDate);
   dateInput.addEventListener("input", updateTimesBySelectedDate);
   dateInput.addEventListener("blur", updateTimesBySelectedDate);
+  window.nailsHoursListenerBound = true;
+  console.log("Listeners de fecha activos en #bookingDate");
 
   if (dateInput.value) {
     await updateTimesBySelectedDate();
@@ -308,35 +283,13 @@ async function initClient(db) {
       return;
     }
 
-    const slotId = createSlotId(date, time);
-
     if (!db) {
-      const occupied = getLocalOccupiedTimesByDate(date);
-      if (occupied.has(time)) {
-        setFeedback(feedback, "Ese horario ya no está disponible. Elegí otro.", "error");
-        await renderTimeOptions(db, date, timeSelect);
-        return;
-      }
-
-      upsertLocalAppointment({
-        id: slotId,
-        name,
-        service,
-        date,
-        time,
-        status: "activo",
-        blocked: false,
-        source: "web-local",
-        createdAt: Date.now(),
-        updatedAt: Date.now(),
-      });
-
-      setFeedback(feedback, "Turno confirmado con éxito.", "success");
-      showBookingConfirmedDialog();
-      form.reset();
-      renderEmptyTimes(timeSelect);
+      setFeedback(feedback, "No se puede confirmar el turno: falta conexión/configuración de Firebase.", "error");
+      console.warn("Firebase/Firestore no disponible al intentar reservar.");
       return;
     }
+
+    const slotId = createSlotId(date, time);
 
     const slotRef = doc(db, "appointments", slotId);
 
@@ -370,7 +323,12 @@ async function initClient(db) {
         "Turno reservado con éxito. Si querés, podés confirmar por WhatsApp para una respuesta más rápida.",
         "success"
       );
-      showBookingConfirmedDialog();
+      abrirModalTurno({
+        nombre: name,
+        servicio: service,
+        fecha: date,
+        hora: time,
+      });
 
       form.reset();
       renderEmptyTimes(timeSelect);
@@ -384,9 +342,16 @@ async function initClient(db) {
       setFeedback(feedback, "No se pudo completar la reserva. Intentá nuevamente.", "error");
     }
   });
+
+  window.nailsBookingSubmitBound = true;
 }
 
 function renderEmptyTimes(select) {
+  if (!select) {
+    console.error("Elemento no encontrado para renderEmptyTimes");
+    return;
+  }
+
   select.innerHTML = "";
   const option = document.createElement("option");
   option.value = "";
@@ -395,6 +360,11 @@ function renderEmptyTimes(select) {
 }
 
 async function renderTimeOptions(db, date, select) {
+  if (!select) {
+    console.error("Elemento no encontrado para renderTimeOptions");
+    return;
+  }
+
   select.innerHTML = "";
 
   if (!date) {
@@ -404,7 +374,12 @@ async function renderTimeOptions(db, date, select) {
 
   let occupied = new Set();
   try {
-    occupied = await getOccupiedTimesByDate(db, date);
+    if (!db) {
+      console.warn("Firebase/Firestore no disponible para consultar disponibilidad de horarios.");
+      occupied = new Set();
+    } else {
+      occupied = await getOccupiedTimesByDate(db, date);
+    }
   } catch {
     occupied = new Set();
   }
@@ -435,37 +410,24 @@ async function renderTimeOptions(db, date, select) {
 async function initAdmin(db, auth) {
   const dashboard = document.getElementById("adminDashboard");
   const section = document.getElementById("appointmentsSection");
-  const isDevSession = (() => {
-    try {
-      return sessionStorage.getItem(DEV_ADMIN_SESSION_KEY) === "1";
-    } catch {
-      return false;
-    }
-  })();
 
   if (!dashboard || !section) {
     return;
   }
 
-  if (!ENABLE_ADMIN_AUTH) {
-    dashboard.hidden = false;
-    section.hidden = false;
-    await setupAdminDashboard(db, auth);
-    return;
-  }
-
-  if (isDevSession) {
-    dashboard.hidden = false;
-    section.hidden = false;
-    await setupAdminDashboard(null, null);
-    return;
-  }
-
   if (!auth || !db) {
-    dashboard.hidden = true;
-    section.hidden = true;
+    window.location.href = "login.html?config=1";
     return;
   }
+
+  if (!auth.currentUser) {
+    window.location.href = "login.html?unauthorized=1";
+    return;
+  }
+
+  dashboard.hidden = false;
+  section.hidden = false;
+  await setupAdminDashboard(db, auth);
 
   onAuthStateChanged(auth, async (user) => {
     const isLogged = Boolean(user);
@@ -473,131 +435,8 @@ async function initAdmin(db, auth) {
     section.hidden = !isLogged;
 
     if (!isLogged) {
-      window.location.replace("login.html?unauthorized=1");
+      window.location.href = "login.html?unauthorized=1";
       return;
-    }
-
-    if (isLogged) {
-      await setupAdminDashboard(db, auth);
-    }
-  });
-}
-
-function setupLocalAdminAuth(db) {
-  const form = document.getElementById("adminLoginForm");
-  const feedback = document.getElementById("adminLoginFeedback");
-  const usernameInput = document.getElementById("adminUsername");
-  const passwordInput = document.getElementById("adminPassword");
-  const logoutBtn = document.getElementById("adminLogoutBtn");
-  const passwordForm = document.getElementById("adminPasswordForm");
-  const passwordFeedback = document.getElementById("passwordFeedback");
-
-  const openDashboard = async () => {
-    toggleAdminVisibility(true);
-    await setupAdminDashboard(db, null);
-  };
-
-  // Siempre solicitar credenciales al abrir admin.html.
-  setLocalAdminLoggedIn(false);
-  toggleAdminVisibility(false);
-
-  if (form) {
-    form.addEventListener("submit", async (event) => {
-      event.preventDefault();
-      clearFeedback(feedback);
-
-      const username = usernameInput?.value.trim() || "";
-      const password = passwordInput?.value || "";
-      const saved = getLocalAdminCredentials();
-
-      if (!username || !password) {
-        setFeedback(feedback, "Ingresá usuario y contraseña.", "error");
-        return;
-      }
-
-      if (username !== saved.username || password !== saved.password) {
-        setFeedback(feedback, "Credenciales incorrectas.", "error");
-        return;
-      }
-
-      setLocalAdminLoggedIn(true);
-      setFeedback(feedback, "Ingreso exitoso.", "success");
-      await openDashboard();
-      form.reset();
-    });
-  }
-
-  if (logoutBtn) {
-    logoutBtn.addEventListener("click", () => {
-      setLocalAdminLoggedIn(false);
-      toggleAdminVisibility(false);
-      clearFeedback(feedback);
-      clearFeedback(passwordFeedback);
-    });
-  }
-
-  if (passwordForm) {
-    passwordForm.addEventListener("submit", (event) => {
-      event.preventDefault();
-      clearFeedback(passwordFeedback);
-
-      const currentPassword = document.getElementById("currentPassword")?.value || "";
-      const newPassword = document.getElementById("newPassword")?.value || "";
-      const confirmPassword = document.getElementById("confirmPassword")?.value || "";
-      const saved = getLocalAdminCredentials();
-
-      if (!currentPassword || !newPassword || !confirmPassword) {
-        setFeedback(passwordFeedback, "Completá todos los campos.", "error");
-        return;
-      }
-
-      if (currentPassword !== saved.password) {
-        setFeedback(passwordFeedback, "La contraseña actual no coincide.", "error");
-        return;
-      }
-
-      if (newPassword.length < 4) {
-        setFeedback(passwordFeedback, "La nueva contraseña debe tener al menos 4 caracteres.", "error");
-        return;
-      }
-
-      if (newPassword !== confirmPassword) {
-        setFeedback(passwordFeedback, "Las contraseñas nuevas no coinciden.", "error");
-        return;
-      }
-
-      saveLocalAdminCredentials({ username: saved.username, password: newPassword });
-      setFeedback(passwordFeedback, "Contraseña actualizada correctamente.", "success");
-      passwordForm.reset();
-    });
-  }
-}
-
-function setupAdminLogin(auth) {
-  const form = document.getElementById("adminLoginForm");
-  const feedback = document.getElementById("adminLoginFeedback");
-
-  if (!form) {
-    return;
-  }
-
-  form.addEventListener("submit", async (event) => {
-    event.preventDefault();
-    clearFeedback(feedback);
-
-    const email = document.getElementById("adminEmail")?.value.trim();
-    const password = document.getElementById("adminPassword")?.value;
-
-    if (!email || !password) {
-      setFeedback(feedback, "Completá email y contraseña.", "error");
-      return;
-    }
-
-    try {
-      await signInWithEmailAndPassword(auth, email, password);
-      setFeedback(feedback, "Ingreso exitoso.", "success");
-    } catch {
-      setFeedback(feedback, "No se pudo iniciar sesión.", "error");
     }
   });
 }
@@ -635,7 +474,7 @@ async function setupAdminDashboard(db, auth) {
   await setupUserManagementPanel(db, auth);
 
   const load = async () => {
-    const allAppointments = db ? await fetchAppointments(db, "") : fetchLocalAppointments("");
+    const allAppointments = await fetchAppointments(db, "");
     const listedAppointments = filterDate.value
       ? allAppointments.filter((item) => item.date === filterDate.value)
       : allAppointments;
@@ -698,28 +537,7 @@ async function setupAdminDashboard(db, auth) {
     }
 
     try {
-      if (!db) {
-        const list = getLocalAppointments();
-        const index = list.findIndex((item) => item.id === id);
-        if (index === -1) {
-          return;
-        }
-
-        if (action === "delete") {
-          list.splice(index, 1);
-        } else if (action === "cancel") {
-          list[index].status = "cancelado";
-          list[index].updatedAt = Date.now();
-        } else if (action === "complete") {
-          list[index].status = "completado";
-          list[index].updatedAt = Date.now();
-        } else if (action === "activate") {
-          list[index].status = "activo";
-          list[index].updatedAt = Date.now();
-        }
-
-        setLocalAppointments(list);
-      } else if (action === "delete") {
+      if (action === "delete") {
         await deleteDoc(doc(db, "appointments", id));
       } else if (action === "cancel") {
         await updateDoc(doc(db, "appointments", id), {
@@ -757,32 +575,6 @@ async function setupAdminDashboard(db, auth) {
     }
 
     const slotId = createSlotId(date, time);
-
-    if (!db) {
-      const occupied = getLocalOccupiedTimesByDate(date);
-      if (occupied.has(time)) {
-        setFeedback(blockFeedback, "Ese horario ya está ocupado o bloqueado.", "error");
-        return;
-      }
-
-      upsertLocalAppointment({
-        id: slotId,
-        name: "Bloqueado",
-        service: "Bloqueo manual",
-        date,
-        time,
-        status: "bloqueado",
-        blocked: true,
-        source: "admin-local",
-        createdAt: Date.now(),
-        updatedAt: Date.now(),
-      });
-
-      setFeedback(blockFeedback, "Horario bloqueado correctamente.", "success");
-      blockForm.reset();
-      await load();
-      return;
-    }
 
     const slotRef = doc(db, "appointments", slotId);
 
@@ -946,17 +738,33 @@ async function setupUserManagementPanel(db, auth) {
 
       users.forEach((userItem) => {
         const row = document.createElement("tr");
-        row.innerHTML = `
-          <td>${userItem.email}</td>
-          <td>${userItem.role}</td>
-          <td>${formatFirestoreDate(userItem.createdAt)}</td>
-          <td>
-            <button type="button" class="btn btn-secondary user-reset-btn" data-email="${userItem.email}">Resetear</button>
-          </td>
-          <td>
-            <button type="button" class="btn btn-secondary user-delete-btn" data-uid="${userItem.uid}">Eliminar</button>
-          </td>
-        `;
+
+        const emailCell = document.createElement("td");
+        emailCell.textContent = userItem.email;
+
+        const roleCell = document.createElement("td");
+        roleCell.textContent = userItem.role;
+
+        const createdCell = document.createElement("td");
+        createdCell.textContent = formatFirestoreDate(userItem.createdAt);
+
+        const resetCell = document.createElement("td");
+        const resetBtn = document.createElement("button");
+        resetBtn.type = "button";
+        resetBtn.className = "btn btn-secondary user-reset-btn";
+        resetBtn.dataset.email = userItem.email;
+        resetBtn.textContent = "Resetear";
+        resetCell.appendChild(resetBtn);
+
+        const deleteCell = document.createElement("td");
+        const deleteBtn = document.createElement("button");
+        deleteBtn.type = "button";
+        deleteBtn.className = "btn btn-secondary user-delete-btn";
+        deleteBtn.dataset.uid = userItem.uid;
+        deleteBtn.textContent = "Eliminar";
+        deleteCell.appendChild(deleteBtn);
+
+        row.append(emailCell, roleCell, createdCell, resetCell, deleteCell);
         tableBody.appendChild(row);
       });
     } catch {
@@ -1130,21 +938,6 @@ async function setupUserManagementPanel(db, auth) {
   await renderUsers();
 }
 
-function fetchLocalAppointments(dateFilter) {
-  const data = getLocalAppointments();
-  const filtered = dateFilter ? data.filter((item) => item.date === dateFilter) : data;
-
-  filtered.sort((a, b) => {
-    const byDate = (a.date || "").localeCompare(b.date || "");
-    if (byDate !== 0) {
-      return byDate;
-    }
-    return (a.time || "").localeCompare(b.time || "");
-  });
-
-  return filtered;
-}
-
 function mountTimeSelect(select) {
   select.innerHTML = "";
   const first = document.createElement("option");
@@ -1195,25 +988,57 @@ function renderAppointments(tbody, appointments) {
     const row = document.createElement("tr");
     const isBlocked = appointment.status === "bloqueado";
 
-    row.innerHTML = `
-      <td>${appointment.name || "-"}</td>
-      <td>${appointment.service || "-"}</td>
-      <td>${appointment.date || "-"}</td>
-      <td>${appointment.time || "-"}</td>
-      <td><span class="status-pill status-${appointment.status || "activo"}">${appointment.status || "activo"}</span></td>
-      <td class="action-cell">
-        ${
-          !isBlocked
-            ? `<button type="button" data-action="complete" data-id="${appointment.id}">Completar</button>
-               <button type="button" data-action="cancel" data-id="${appointment.id}">Cancelar</button>`
-            : `<button type="button" data-action="activate" data-id="${appointment.id}">Liberar</button>`
-        }
-        <button type="button" data-action="delete" data-id="${appointment.id}">Eliminar</button>
-      </td>
-    `;
+    const status = normalizeStatus(appointment.status);
+    const id = String(appointment.id || "");
+
+    const nameCell = document.createElement("td");
+    nameCell.textContent = appointment.name || "-";
+
+    const serviceCell = document.createElement("td");
+    serviceCell.textContent = appointment.service || "-";
+
+    const dateCell = document.createElement("td");
+    dateCell.textContent = appointment.date || "-";
+
+    const timeCell = document.createElement("td");
+    timeCell.textContent = appointment.time || "-";
+
+    const statusCell = document.createElement("td");
+    const statusPill = document.createElement("span");
+    statusPill.className = `status-pill status-${status}`;
+    statusPill.textContent = status;
+    statusCell.appendChild(statusPill);
+
+    const actionsCell = document.createElement("td");
+    actionsCell.className = "action-cell";
+
+    const appendActionButton = (action, label) => {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.dataset.action = action;
+      button.dataset.id = id;
+      button.textContent = label;
+      actionsCell.appendChild(button);
+    };
+
+    if (!isBlocked) {
+      appendActionButton("complete", "Completar");
+      appendActionButton("cancel", "Cancelar");
+    } else {
+      appendActionButton("activate", "Liberar");
+    }
+    appendActionButton("delete", "Eliminar");
+
+    row.append(nameCell, serviceCell, dateCell, timeCell, statusCell, actionsCell);
 
     tbody.appendChild(row);
   });
+}
+
+function normalizeStatus(value) {
+  const status = String(value || "activo").toLowerCase();
+  const allowed = new Set(["activo", "bloqueado", "completado", "cancelado"]);
+  return allowed.has(status) ? status : "activo";
 }
 
 function renderStats(container, appointments) {
@@ -1226,13 +1051,21 @@ function renderStats(container, appointments) {
   const completed = appointments.filter((item) => item.status === "completado").length;
   const canceled = appointments.filter((item) => item.status === "cancelado").length;
 
-  container.innerHTML = `
-    <span>Total: ${appointments.length}</span>
-    <span>Activos: ${active}</span>
-    <span>Bloqueados: ${blocked}</span>
-    <span>Completados: ${completed}</span>
-    <span>Cancelados: ${canceled}</span>
-  `;
+  container.textContent = "";
+
+  const values = [
+    `Total: ${appointments.length}`,
+    `Activos: ${active}`,
+    `Bloqueados: ${blocked}`,
+    `Completados: ${completed}`,
+    `Cancelados: ${canceled}`,
+  ];
+
+  values.forEach((item) => {
+    const stat = document.createElement("span");
+    stat.textContent = item;
+    container.appendChild(stat);
+  });
 }
 
 function renderAdminCalendar(grid, title, appointments, monthDate, onSelectDate, selectedDate) {
@@ -1387,10 +1220,8 @@ function renderAdminCalendar(grid, title, appointments, monthDate, onSelectDate,
 
 window.nailsAppointments = {
   logoutAdmin: async () => {
-    if (!ENABLE_ADMIN_AUTH) {
-      return;
+    if (firebaseAuth) {
+      await signOut(firebaseAuth);
     }
-    const auth = getAuth();
-    await signOut(auth);
   },
 };

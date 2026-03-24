@@ -627,33 +627,29 @@ function createVirtualAssistant() {
   });
 }
 
-function initBookingFallback() {
-  const form = document.getElementById("bookingForm");
-  const dateInput = document.getElementById("bookingDate");
-  const timeSelect = document.getElementById("bookingTime");
-  const feedback = document.getElementById("bookingFeedback");
-  const nameInput = document.getElementById("clientName");
-  const serviceSelect = document.getElementById("serviceSelect");
-
-  if (!form || !dateInput || !timeSelect) {
+function initHoursSelectFallback() {
+  if (window.nailsHoursListenerBound) {
     return;
   }
 
-  const setTodayMin = () => {
-    const today = new Date();
-    const yyyy = today.getFullYear();
-    const mm = String(today.getMonth() + 1).padStart(2, "0");
-    const dd = String(today.getDate()).padStart(2, "0");
-    dateInput.min = `${yyyy}-${mm}-${dd}`;
-  };
+  const dateInput = document.getElementById("bookingDate");
+  const timeSelect = document.getElementById("bookingTime");
+  const feedback = document.getElementById("bookingFeedback");
 
-  const slots = [];
-  for (let hour = 9; hour < 19; hour += 1) {
-    slots.push(`${String(hour).padStart(2, "0")}:00`);
-    slots.push(`${String(hour).padStart(2, "0")}:30`);
+  if (!dateInput || !timeSelect) {
+    return;
   }
 
-  const renderNoDate = () => {
+  const buildSlots = () => {
+    const slots = [];
+    for (let hour = 9; hour < 19; hour += 1) {
+      slots.push(`${String(hour).padStart(2, "0")}:00`);
+      slots.push(`${String(hour).padStart(2, "0")}:30`);
+    }
+    return slots;
+  };
+
+  const renderEmpty = () => {
     timeSelect.innerHTML = "";
     const option = document.createElement("option");
     option.value = "";
@@ -662,17 +658,18 @@ function initBookingFallback() {
   };
 
   const renderSlots = (dateValue) => {
-    timeSelect.innerHTML = "";
-
     if (!dateValue) {
-      renderNoDate();
+      renderEmpty();
       return;
     }
 
-    const startOption = document.createElement("option");
-    startOption.value = "";
-    startOption.textContent = "Seleccioná un horario";
-    timeSelect.appendChild(startOption);
+    const slots = buildSlots();
+    timeSelect.innerHTML = "";
+
+    const start = document.createElement("option");
+    start.value = "";
+    start.textContent = "Seleccioná un horario";
+    timeSelect.appendChild(start);
 
     slots.forEach((slot) => {
       const option = document.createElement("option");
@@ -682,56 +679,58 @@ function initBookingFallback() {
     });
   };
 
-  setTodayMin();
-
   const onDateChange = () => {
-    const selectedDate = (dateInput.value || "").trim();
-    renderSlots(selectedDate);
+    const value = (dateInput.value || "").trim();
+    console.log("Fecha seleccionada (fallback):", value);
+    renderSlots(value);
   };
 
   dateInput.addEventListener("change", onDateChange);
   dateInput.addEventListener("input", onDateChange);
   dateInput.addEventListener("blur", onDateChange);
 
-  if (dateInput.value) {
-    renderSlots(dateInput.value.trim());
-  } else {
-    renderNoDate();
+  if (feedback) {
+    feedback.textContent = "Modo visual de horarios activo. Para disponibilidad en tiempo real configurá Firebase.";
+    feedback.classList.remove("is-error");
+    feedback.classList.add("is-success");
   }
 
+  onDateChange();
+  console.warn("Fallback de horarios activado porque app.js no se inicializó.");
+}
+
+function initBookingSubmitGuard() {
+  const form = document.getElementById("bookingForm");
+  const feedback = document.getElementById("bookingFeedback");
+
+  if (!form || window.nailsBookingSubmitBound || form.dataset.submitGuardBound === "1") {
+    return;
+  }
+
+  form.dataset.submitGuardBound = "1";
   form.addEventListener("submit", (event) => {
-    event.preventDefault();
-
-    const name = (nameInput?.value || "").trim();
-    const service = serviceSelect?.value || "";
-    const date = (dateInput.value || "").trim();
-    const time = (timeSelect.value || "").trim();
-
-    if (!name || !service || !date || !time) {
-      if (feedback) {
-        feedback.textContent = "Completá todos los campos para confirmar tu turno.";
-        feedback.classList.remove("is-success");
-        feedback.classList.add("is-error");
-      }
+    if (window.nailsBookingSubmitBound) {
       return;
     }
 
+    event.preventDefault();
+    event.stopPropagation();
+
     if (feedback) {
-      feedback.textContent = "Turno confirmado (modo local).";
-      feedback.classList.remove("is-error");
-      feedback.classList.add("is-success");
+      feedback.textContent = "No se pudo inicializar la reserva correctamente. Recargá la página e intentá de nuevo.";
+      feedback.classList.remove("is-success");
+      feedback.classList.add("is-error");
     }
 
-    window.alert("Turno confirmado. Te esperamos en Nails By Pao.");
-    form.reset();
-    renderNoDate();
+    console.error("Submit bloqueado por guard: el listener principal de reserva no está activo.");
   });
 }
 
+createVirtualAssistant();
+
 window.setTimeout(() => {
-  if (window.nailsAppointmentsRuntimeReady) {
-    return;
-  }
-  initBookingFallback();
-}, 350);
+  initBookingSubmitGuard();
+  initHoursSelectFallback();
+}, 500);
+
 
