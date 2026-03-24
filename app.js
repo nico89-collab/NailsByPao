@@ -1,4 +1,4 @@
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
+import { getApp, getApps, initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
 import {
   collection,
   deleteDoc,
@@ -14,23 +14,33 @@ import {
   where,
 } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 import {
+  createUserWithEmailAndPassword,
   getAuth,
   onAuthStateChanged,
+  sendPasswordResetEmail,
   signInWithEmailAndPassword,
   signOut,
+  updatePassword,
 } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
 
-const ENABLE_ADMIN_AUTH = false;
+if (window.location.protocol === "file:") {
+  alert("Esta aplicación requiere ejecutarse en un servidor local (ej: Live Server o http://localhost).");
+}
+
+const ENABLE_ADMIN_AUTH = true;
 const LOCAL_ADMIN_CREDENTIALS_KEY = "nailsAdminCredentials";
 const LOCAL_ADMIN_SESSION_KEY = "nailsAdminSession";
 const LOCAL_APPOINTMENTS_KEY = "nailsLocalAppointments";
-const DEFAULT_LOCAL_ADMIN = { username: "admin", password: "admin" };
+const DEFAULT_LOCAL_ADMIN = { username: "", password: "" };
 const WORKDAY_START_HOUR = 9;
 const WORKDAY_END_HOUR = 19;
 const SLOT_MINUTES = 30;
 const OCCUPIED_STATUSES = ["activo", "bloqueado"];
 const TIME_SLOTS = buildTimeSlots(WORKDAY_START_HOUR, WORKDAY_END_HOUR, SLOT_MINUTES);
 let adminDashboardReady = false;
+const PRIMARY_ADMIN_EMAIL = "admin@tudominio.com";
+const SECONDARY_ADMIN_APP_NAME = "nails-admin-user-manager";
+const DEV_ADMIN_SESSION_KEY = "nailsDevAdminSession";
 
 // Reemplaza con tu config real de Firebase.
 const firebaseConfig = {
@@ -56,7 +66,7 @@ if (!hasValidFirebaseConfig) {
     initClient(null);
   }
 } else {
-  const app = initializeApp(firebaseConfig);
+  const app = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig);
   const db = getFirestore(app);
   const auth = getAuth(app);
 
@@ -425,6 +435,13 @@ async function renderTimeOptions(db, date, select) {
 async function initAdmin(db, auth) {
   const dashboard = document.getElementById("adminDashboard");
   const section = document.getElementById("appointmentsSection");
+  const isDevSession = (() => {
+    try {
+      return sessionStorage.getItem(DEV_ADMIN_SESSION_KEY) === "1";
+    } catch {
+      return false;
+    }
+  })();
 
   if (!dashboard || !section) {
     return;
@@ -433,28 +450,35 @@ async function initAdmin(db, auth) {
   if (!ENABLE_ADMIN_AUTH) {
     dashboard.hidden = false;
     section.hidden = false;
-    await setupAdminDashboard(db);
+    await setupAdminDashboard(db, auth);
     return;
   }
 
-  const loginCard = document.getElementById("adminLogin");
-
-  if (loginCard) {
-    loginCard.hidden = false;
+  if (isDevSession) {
+    dashboard.hidden = false;
+    section.hidden = false;
+    await setupAdminDashboard(null, null);
+    return;
   }
 
-  setupAdminLogin(auth);
+  if (!auth || !db) {
+    dashboard.hidden = true;
+    section.hidden = true;
+    return;
+  }
 
   onAuthStateChanged(auth, async (user) => {
     const isLogged = Boolean(user);
     dashboard.hidden = !isLogged;
     section.hidden = !isLogged;
-    if (loginCard) {
-      loginCard.hidden = isLogged;
+
+    if (!isLogged) {
+      window.location.replace("login.html?unauthorized=1");
+      return;
     }
 
     if (isLogged) {
-      await setupAdminDashboard(db);
+      await setupAdminDashboard(db, auth);
     }
   });
 }
@@ -470,7 +494,7 @@ function setupLocalAdminAuth(db) {
 
   const openDashboard = async () => {
     toggleAdminVisibility(true);
-    await setupAdminDashboard(db);
+    await setupAdminDashboard(db, null);
   };
 
   // Siempre solicitar credenciales al abrir admin.html.
@@ -578,7 +602,7 @@ function setupAdminLogin(auth) {
   });
 }
 
-async function setupAdminDashboard(db) {
+async function setupAdminDashboard(db, auth) {
   if (adminDashboardReady) {
     return;
   }
@@ -608,6 +632,7 @@ async function setupAdminDashboard(db) {
   setMinToday(filterDate);
   setMinToday(blockDate);
   mountTimeSelect(blockTime);
+  await setupUserManagementPanel(db, auth);
 
   const load = async () => {
     const allAppointments = db ? await fetchAppointments(db, "") : fetchLocalAppointments("");
@@ -796,6 +821,313 @@ async function setupAdminDashboard(db) {
       setFeedback(blockFeedback, "No se pudo bloquear el horario.", "error");
     }
   });
+}
+
+function mapAuthError(code) {
+  if (!code) {
+    return "Ocurrió un error inesperado.";
+  }
+
+  const errors = {
+    "auth/email-already-in-use": "Ese email ya está registrado.",
+    "auth/invalid-email": "El email no es válido.",
+    "auth/weak-password": "La contraseña debe tener al menos 6 caracteres.",
+    "auth/requires-recent-login": "Por seguridad, cerrá sesión e iniciá nuevamente para realizar esta acción.",
+    "auth/user-not-found": "No se encontró un usuario con ese email.",
+  };
+
+  return errors[code] || "No se pudo completar la operación.";
+}
+
+function formatFirestoreDate(value) {
+  if (!value) {
+    return "-";
+  }
+
+  if (typeof value === "number") {
+    return new Date(value).toLocaleString("es-AR");
+  }
+
+  if (typeof value.toDate === "function") {
+    return value.toDate().toLocaleString("es-AR");
+  }
+
+  return "-";
+}
+
+async function isSuperAdmin(db, user) {
+  if (!db || !user) {
+    return false;
+  }
+
+  if (user.email && user.email.toLowerCase() === PRIMARY_ADMIN_EMAIL.toLowerCase()) {
+    return true;
+  }
+
+  try {
+    const adminDoc = await getDoc(doc(db, "adminUsers", user.uid));
+    if (adminDoc.exists() && adminDoc.data()?.role === "admin") {
+      return true;
+    }
+  } catch {
+    // noop
+  }
+
+  try {
+    const userDoc = await getDoc(doc(db, "users", user.uid));
+    if (userDoc.exists() && userDoc.data()?.role === "admin") {
+      return true;
+    }
+  } catch {
+    // noop
+  }
+
+  return false;
+}
+
+async function setupUserManagementPanel(db, auth) {
+  const card = document.getElementById("userManagementCard");
+  const accessNote = document.getElementById("userAccessNote");
+  const feedback = document.getElementById("userFeedback");
+  const loader = document.getElementById("userLoader");
+  const tableBody = document.getElementById("usersTableBody");
+  const createForm = document.getElementById("createUserForm");
+  const resetForm = document.getElementById("resetPasswordForm");
+  const changeForm = document.getElementById("changePasswordForm");
+
+  if (!card || !tableBody || !createForm || !resetForm || !changeForm || !feedback || !loader || !accessNote) {
+    return;
+  }
+
+  if (!db || !auth?.currentUser) {
+    card.hidden = true;
+    return;
+  }
+
+  const canManageUsers = await isSuperAdmin(db, auth.currentUser);
+  if (!canManageUsers) {
+    card.hidden = true;
+    return;
+  }
+
+  card.hidden = false;
+  accessNote.textContent = `Sesión: ${auth.currentUser.email || "admin"} (admin)`;
+
+  const setLoading = (isLoading) => {
+    loader.hidden = !isLoading;
+  };
+
+  const renderUsers = async () => {
+    setLoading(true);
+    tableBody.innerHTML = "";
+
+    try {
+      const snap = await getDocs(query(collection(db, "users")));
+      const users = [];
+
+      snap.forEach((item) => {
+        const data = item.data() || {};
+        users.push({
+          uid: item.id,
+          email: data.email || "(sin email)",
+          role: data.role || "staff",
+          createdAt: data.createdAt || null,
+        });
+      });
+
+      users.sort((a, b) => a.email.localeCompare(b.email));
+
+      if (users.length === 0) {
+        const row = document.createElement("tr");
+        row.innerHTML = '<td colspan="5">Todavía no hay usuarios registrados en la colección users.</td>';
+        tableBody.appendChild(row);
+        return;
+      }
+
+      users.forEach((userItem) => {
+        const row = document.createElement("tr");
+        row.innerHTML = `
+          <td>${userItem.email}</td>
+          <td>${userItem.role}</td>
+          <td>${formatFirestoreDate(userItem.createdAt)}</td>
+          <td>
+            <button type="button" class="btn btn-secondary user-reset-btn" data-email="${userItem.email}">Resetear</button>
+          </td>
+          <td>
+            <button type="button" class="btn btn-secondary user-delete-btn" data-uid="${userItem.uid}">Eliminar</button>
+          </td>
+        `;
+        tableBody.appendChild(row);
+      });
+    } catch {
+      setFeedback(feedback, "No se pudo cargar la lista de usuarios.", "error");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  createForm.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    clearFeedback(feedback);
+
+    const email = document.getElementById("newUserEmail")?.value.trim().toLowerCase() || "";
+    const password = document.getElementById("newUserPassword")?.value || "";
+
+    if (!email || !password) {
+      setFeedback(feedback, "Completá email y contraseña para crear el usuario.", "error");
+      return;
+    }
+
+    if (password.length < 6) {
+      setFeedback(feedback, "La contraseña debe tener al menos 6 caracteres.", "error");
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      const secondaryApp = getApps().find((item) => item.name === SECONDARY_ADMIN_APP_NAME)
+        || initializeApp(firebaseConfig, SECONDARY_ADMIN_APP_NAME);
+      const secondaryAuth = getAuth(secondaryApp);
+
+      const userCredential = await createUserWithEmailAndPassword(secondaryAuth, email, password);
+
+      await setDoc(doc(db, "users", userCredential.user.uid), {
+        uid: userCredential.user.uid,
+        email,
+        role: "staff",
+        createdAt: serverTimestamp(),
+        createdBy: auth.currentUser.uid,
+      });
+
+      await signOut(secondaryAuth);
+      setFeedback(feedback, "Usuario creado correctamente.", "success");
+      createForm.reset();
+      await renderUsers();
+    } catch (error) {
+      setFeedback(feedback, mapAuthError(error?.code), "error");
+    } finally {
+      setLoading(false);
+    }
+  });
+
+  resetForm.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    clearFeedback(feedback);
+
+    const email = document.getElementById("resetEmail")?.value.trim().toLowerCase() || "";
+    if (!email) {
+      setFeedback(feedback, "Ingresá un email para resetear la contraseña.", "error");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      await sendPasswordResetEmail(auth, email);
+      setFeedback(feedback, "Email de reseteo enviado correctamente.", "success");
+      resetForm.reset();
+    } catch (error) {
+      setFeedback(feedback, mapAuthError(error?.code), "error");
+    } finally {
+      setLoading(false);
+    }
+  });
+
+  changeForm.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    clearFeedback(feedback);
+
+    const password = document.getElementById("myNewPassword")?.value || "";
+    const confirm = document.getElementById("myConfirmPassword")?.value || "";
+
+    if (!password || !confirm) {
+      setFeedback(feedback, "Completá ambos campos para cambiar tu contraseña.", "error");
+      return;
+    }
+
+    if (password.length < 6) {
+      setFeedback(feedback, "La nueva contraseña debe tener al menos 6 caracteres.", "error");
+      return;
+    }
+
+    if (password !== confirm) {
+      setFeedback(feedback, "Las contraseñas no coinciden.", "error");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      await updatePassword(auth.currentUser, password);
+      setFeedback(feedback, "Contraseña actualizada correctamente.", "success");
+      changeForm.reset();
+    } catch (error) {
+      setFeedback(feedback, mapAuthError(error?.code), "error");
+    } finally {
+      setLoading(false);
+    }
+  });
+
+  tableBody.addEventListener("click", async (event) => {
+    const target = event.target;
+    if (!(target instanceof HTMLButtonElement)) {
+      return;
+    }
+
+    if (target.classList.contains("user-reset-btn")) {
+      const email = target.dataset.email || "";
+      if (!email) {
+        return;
+      }
+
+      setLoading(true);
+      clearFeedback(feedback);
+
+      try {
+        await sendPasswordResetEmail(auth, email);
+        setFeedback(feedback, `Email de reseteo enviado a ${email}.`, "success");
+      } catch (error) {
+        setFeedback(feedback, mapAuthError(error?.code), "error");
+      } finally {
+        setLoading(false);
+      }
+
+      return;
+    }
+
+    if (target.classList.contains("user-delete-btn")) {
+      const uid = target.dataset.uid || "";
+      if (!uid) {
+        return;
+      }
+
+      const ok = window.confirm(
+        "¿Querés eliminar este usuario? En cliente web solo se elimina del listado local de usuarios, no de Firebase Auth."
+      );
+
+      if (!ok) {
+        return;
+      }
+
+      setLoading(true);
+      clearFeedback(feedback);
+
+      try {
+        await deleteDoc(doc(db, "users", uid));
+        setFeedback(
+          feedback,
+          "Usuario eliminado de la colección users. Para borrar la cuenta en Auth necesitás Cloud Function + Admin SDK.",
+          "success"
+        );
+        await renderUsers();
+      } catch {
+        setFeedback(feedback, "No se pudo eliminar el usuario.", "error");
+      } finally {
+        setLoading(false);
+      }
+    }
+  });
+
+  await renderUsers();
 }
 
 function fetchLocalAppointments(dateFilter) {

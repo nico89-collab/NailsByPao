@@ -538,12 +538,63 @@ main section {
 }
 
 .footer-bottom {
-  padding: 0.9rem 0 1.2rem;
+  padding: 1rem 0 1.4rem;
   border-top: 1px solid rgba(255, 255, 255, 0.14);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.55rem;
+  text-align: center;
 }
 
-.footer-bottom small {
-  color: rgba(255, 255, 255, 0.7);
+.footer-legal {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem 1.2rem;
+}
+
+.footer-bottom small,
+.footer-bottom .footer-dev {
+  font-size: 0.8rem;
+  color: rgba(255, 255, 255, 0.62);
+  display: block;
+}
+
+.footer-legal-links {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.35rem 0.6rem;
+  justify-content: center;
+}
+
+.footer-legal-links a {
+  font-size: 0.78rem;
+  color: rgba(255, 255, 255, 0.55);
+  text-decoration: none;
+  transition: color 0.2s ease;
+}
+
+.footer-legal-links a:hover {
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.footer-legal-links span {
+  color: rgba(255, 255, 255, 0.3);
+  font-size: 0.7rem;
+}
+
+.footer-dev a {
+  color: rgba(255, 255, 255, 0.72);
+  text-decoration: none;
+  font-weight: 600;
+  transition: color 0.2s ease;
+}
+
+.footer-dev a:hover {
+  color: #fff;
 }
 
 .socials {
@@ -833,11 +884,18 @@ main section {
 .admin-block-form input,
 .admin-block-form select,
 .admin-toolbar input {
+  width: 100%;
   border: 1px solid rgba(148, 29, 88, 0.22);
   border-radius: 10px;
   padding: 0.68rem 0.75rem;
   font: inherit;
   background: #fff;
+}
+
+.booking-form .btn,
+.booking-help .btn {
+  width: 100%;
+  margin-top: 0.5rem;
 }
 
 .booking-feedback {
@@ -884,7 +942,21 @@ main section {
 
 .admin-grid {
   display: grid;
-  gap: 1rem;
+  gap: 1.5rem;
+}
+
+/* Cards de la primera fila operativa del dashboard: mismo alto y estructura vertical */
+#adminDashboard > .admin-card:nth-of-type(2),
+#adminDashboard > .admin-card:nth-of-type(3) {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+#adminDashboard > .admin-card:nth-of-type(2) h2,
+#adminDashboard > .admin-card:nth-of-type(3) h2 {
+  margin: 0 0 0.8rem;
 }
 
 .admin-calendar-card {
@@ -1232,14 +1304,165 @@ main section {
 }
 
 .admin-toolbar {
-  display: grid;
+  display: flex;
+  flex-direction: column;
   gap: 0.6rem;
+  flex: 1;
 }
 
 .admin-toolbar-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.55rem;
+  margin-top: auto;
+}
+
+.admin-toolbar-actions .btn {
+  width: 100%;
+}
+
+#blockSlotForm {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  flex: 1;
+}
+
+#blockSlotForm input,
+#blockSlotForm select {
+  width: 100%;
+  margin-bottom: 0.8rem;
+}
+
+#blockSlotForm .btn {
+  width: 100%;
+  margin-top: auto;
+}
+
+.admin-users-card {
+  display: grid;
+  gap: 1.2rem;
+}
+
+.admin-users-head {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.55rem;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.admin-users-note {
+  margin: 0;
+  font-size: 0.85rem;
+  color: #644452;
+  font-weight: 600;
+}
+
+.admin-users-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.5rem;
+  align-items: start;
+}
+
+.admin-users-grid .admin-block-form {
+  margin: 0;
+  background: rgba(255, 255, 255, 0.95);
+  border: 1px solid rgba(148, 29, 88, 0.14);
+  border-radius: 14px;
+  box-shadow: 0 10px 24px rgba(44, 13, 28, 0.08);
+  padding: 1rem;
+  display: grid;
+  gap: 0.35rem;
+}
+
+.admin-users-grid h3 {
+  margin: 0 0 0.5rem;
+  color: var(--rose-900);
+  font-size: 1rem;
+}
+
+/* Columna izquierda: crear + cambiar contraseña */
+#createUserForm {
+  grid-column: 1;
+  grid-row: 1;
+}
+
+#changePasswordForm {
+  grid-column: 1;
+  grid-row: 2;
+}
+
+/* Columna derecha: reset contraseña */
+#resetPasswordForm {
+  grid-column: 2;
+  grid-row: 1;
+}
+
+.admin-users-grid label {
+  font-size: 0.84rem;
+  color: #553641;
+  font-weight: 600;
+}
+
+.admin-users-grid input,
+.admin-users-grid select {
+  width: 100%;
+  margin-bottom: 0.8rem;
+  padding: 0.62rem 0.7rem;
+  border-radius: 10px;
+  border: 1px solid rgba(148, 29, 88, 0.25);
+  background: #fff;
+  font: inherit;
+  color: #2c1b24;
+}
+
+.admin-users-grid input:focus,
+.admin-users-grid select:focus {
+  outline: none;
+  border-color: rgba(190, 24, 93, 0.62);
+  box-shadow: 0 0 0 3px rgba(190, 24, 93, 0.16);
+}
+
+.admin-users-grid .btn {
+  width: 100%;
+  margin-top: 0.5rem;
+  justify-content: center;
+}
+
+.admin-users-loader {
+  margin: 0;
+  color: var(--rose-900);
+  font-weight: 700;
+  font-size: 0.86rem;
+}
+
+.users-table button {
+  min-width: 86px;
+}
+
+@media (max-width: 768px) {
+  .admin-grid {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+
+  .admin-toolbar-actions {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-users-grid {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+
+  #createUserForm,
+  #changePasswordForm,
+  #resetPasswordForm {
+    grid-column: auto;
+    grid-row: auto;
+  }
 }
 
 .admin-stats {
@@ -1556,7 +1779,7 @@ main section {
 
   .admin-grid {
     grid-template-columns: 1fr 1fr;
-    align-items: start;
+    align-items: stretch;
   }
 
   .admin-calendar-card {
@@ -1587,6 +1810,48 @@ main section {
     left: 0.7rem;
     width: auto;
     bottom: 9.1rem;
+  }
+}
+
+@media (max-width: 480px) {
+  /* Reserva en formato app: máximo ancho útil en mobile */
+  #reservas.booking-section {
+    width: calc(100% - 0.6rem);
+    max-width: 100%;
+    margin: 0 auto;
+    padding: 1rem 0 1.4rem;
+  }
+
+  #reservas .booking-layout {
+    display: block;
+  }
+
+  #reservas .booking-card {
+    width: 100%;
+    max-width: 100%;
+    padding: 1rem;
+    border-radius: 12px;
+    margin-bottom: 0.85rem;
+  }
+
+  #reservas .booking-form {
+    width: 100%;
+  }
+
+  #reservas .booking-form input,
+  #reservas .booking-form select {
+    width: 100%;
+    font-size: 16px;
+    padding: 0.9rem 0.85rem;
+  }
+
+  #reservas .booking-form .btn,
+  #reservas .booking-help .btn {
+    width: 100%;
+    padding: 1rem;
+    border-radius: 14px;
+    font-size: 1rem;
+    margin-top: 0.5rem;
   }
 }
 

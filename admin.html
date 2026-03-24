@@ -12,7 +12,12 @@
       rel="stylesheet"
     />
     <link rel="stylesheet" href="styles.css" />
-    <script src="login.js?v=20260323" defer></script>
+    <script>
+      if (window.location.protocol === "file:") {
+        alert("Esta aplicación requiere ejecutarse en un servidor local (ej: Live Server o http://localhost).");
+      }
+    </script>
+    <script type="module" src="login.js?v=20260323" defer></script>
   </head>
   <body data-page="admin">
     <header class="site-header">
@@ -46,14 +51,14 @@
       <section id="adminLogin" class="admin-card" hidden>
         <h2>Ingreso admin</h2>
         <form id="adminLoginForm" class="admin-login-form">
-          <label for="adminUsername">Usuario</label>
-          <input id="adminUsername" type="text" placeholder="admin" required />
+          <label for="adminEmail">Email</label>
+          <input id="adminEmail" type="email" placeholder="admin@tudominio.com" autocomplete="email" required />
           <label for="adminPassword">Contraseña</label>
-          <input id="adminPassword" type="password" placeholder="admin" required />
+          <input id="adminPassword" type="password" placeholder="Tu contraseña" autocomplete="current-password" required />
           <button class="btn btn-primary" type="submit">Ingresar</button>
           <p id="adminLoginFeedback" class="booking-feedback" role="status" aria-live="polite"></p>
         </form>
-        <p class="booking-note">Credenciales iniciales: usuario <strong>admin</strong> y contraseña <strong>admin</strong>.</p>
+        <p class="booking-note">Contactá al desarrollador para obtener tus credenciales de acceso.</p>
       </section>
 
       <section id="adminDashboard" class="admin-grid" hidden>
@@ -100,6 +105,62 @@
             <button class="btn btn-primary" type="submit">Bloquear horario</button>
             <p id="blockFeedback" class="booking-feedback" role="status" aria-live="polite"></p>
           </form>
+        </article>
+
+        <article id="userManagementCard" class="admin-card admin-users-card" hidden>
+          <div class="admin-users-head">
+            <h2>Gestión de usuarios</h2>
+            <p id="userAccessNote" class="admin-users-note">Solo admin puede gestionar usuarios.</p>
+          </div>
+
+          <div class="admin-users-grid">
+            <form id="createUserForm" class="admin-block-form">
+              <h3>Crear usuario</h3>
+              <label for="newUserEmail">Email</label>
+              <input id="newUserEmail" type="email" placeholder="nuevo@dominio.com" autocomplete="email" required />
+              <label for="newUserPassword">Contraseña</label>
+              <input id="newUserPassword" type="password" placeholder="Mínimo 6 caracteres" minlength="6" required />
+              <button class="btn btn-primary" type="submit">Crear usuario</button>
+            </form>
+
+            <form id="resetPasswordForm" class="admin-block-form">
+              <h3>Resetear contraseña</h3>
+              <label for="resetEmail">Email</label>
+              <input id="resetEmail" type="email" placeholder="usuario@dominio.com" autocomplete="email" required />
+              <button class="btn btn-secondary" type="submit">Enviar reset</button>
+            </form>
+
+            <form id="changePasswordForm" class="admin-block-form">
+              <h3>Cambiar mi contraseña</h3>
+              <label for="myNewPassword">Nueva contraseña</label>
+              <input id="myNewPassword" type="password" placeholder="Mínimo 6 caracteres" minlength="6" required />
+              <label for="myConfirmPassword">Confirmar contraseña</label>
+              <input id="myConfirmPassword" type="password" placeholder="Repetí tu nueva contraseña" minlength="6" required />
+              <button class="btn btn-secondary" type="submit">Actualizar contraseña</button>
+            </form>
+          </div>
+
+          <p id="userLoader" class="admin-users-loader" hidden>Procesando...</p>
+          <p id="userFeedback" class="booking-feedback" role="status" aria-live="polite"></p>
+
+          <div class="appointments-table-wrap">
+            <table class="appointments-table users-table">
+              <thead>
+                <tr>
+                  <th>Email</th>
+                  <th>Rol</th>
+                  <th>Creado</th>
+                  <th>Reset</th>
+                  <th>Eliminar</th>
+                </tr>
+              </thead>
+              <tbody id="usersTableBody">
+                <tr>
+                  <td colspan="5">Cargando usuarios...</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
         </article>
       </section>
 

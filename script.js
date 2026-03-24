@@ -217,7 +217,14 @@ function createVirtualAssistant() {
   const appendBookingCta = (customText) => {
     const row = document.createElement("p");
     row.className = "assistant-msg bot";
-    row.innerHTML = `${customText || "Si queres, te reservo ahora mismo:"} <a href="${whatsappUrl}" target="_blank" rel="noopener noreferrer">${bookingText}</a>`;
+    const label = document.createTextNode((customText || "Si queres, te reservo ahora mismo:") + " ");
+    const link = document.createElement("a");
+    link.href = whatsappUrl;
+    link.target = "_blank";
+    link.rel = "noopener noreferrer";
+    link.textContent = bookingText;
+    row.appendChild(label);
+    row.appendChild(link);
     bodyLog.appendChild(row);
     bodyLog.scrollTop = bodyLog.scrollHeight;
   };
